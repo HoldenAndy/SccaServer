@@ -1,0 +1,8 @@
+#IMPORTANTE! Quitar el .template y dejar el .properties
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/bd_ejemplo
+spring.datasource.username=TU_USUARIO
+spring.datasource.password=TU_CONTRASENIA
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
