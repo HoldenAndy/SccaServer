@@ -1,0 +1,6 @@
+/target/
+target/
+.idea/
+*.iml
+src/main/resources/application-db.properties
+src/main/resources/application-ia.properties
