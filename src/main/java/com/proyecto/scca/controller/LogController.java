@@ -6,6 +6,7 @@ import com.proyecto.scca.service.LogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -13,6 +14,7 @@ import java.util.List;
 @RequestMapping("/api/v1/logs")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR', 'ROLE_SOPORTE')")
 public class LogController {
     private final LogService logService;
 

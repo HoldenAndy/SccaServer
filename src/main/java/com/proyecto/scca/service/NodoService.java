@@ -10,4 +10,5 @@ public interface NodoService {
     List<NodoDTO> listarNodos();
     NodoDTO registrarNodo(NodoRequest req);
     NodoEsp32 getEntidadPorId(Integer id);
+    List<NodoDTO> listarNodosPorUsuario(Integer idUsuario);
 }

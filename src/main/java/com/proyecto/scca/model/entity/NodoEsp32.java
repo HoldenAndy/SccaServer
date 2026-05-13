@@ -13,4 +13,7 @@ public class NodoEsp32 {
     @Column(nullable = false) private String ubicacion;
     @Column(nullable = false) private Boolean estadoConexion;
     private LocalDateTime ultimaLectura;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private Usuario cliente;
 }

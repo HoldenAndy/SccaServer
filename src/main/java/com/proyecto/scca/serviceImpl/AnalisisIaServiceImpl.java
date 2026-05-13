@@ -3,13 +3,13 @@ package com.proyecto.scca.serviceImpl;
 import com.proyecto.scca.exception.ResourceNotFoundException;
 import com.proyecto.scca.model.dto.AnalisisDTO;
 import com.proyecto.scca.model.dto.PageResponse;
-import com.proyecto.scca.model.entity.AnalisisIa;
-import com.proyecto.scca.model.entity.ImagenAgua;
-import com.proyecto.scca.model.entity.LecturaSensor;
+import com.proyecto.scca.model.entity.*;
 import com.proyecto.scca.repository.AnalisisRepository;
 import com.proyecto.scca.repository.ImagenRepository;
+import com.proyecto.scca.security.UserDetailsImpl;
 import com.proyecto.scca.service.AnalisisIaService;
 import com.proyecto.scca.service.LecturaService;
+import com.proyecto.scca.service.NodoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +20,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -42,6 +44,7 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
     private final AnalisisRepository analisisRepo;
     private final LecturaService lecturaService;
     private final ImagenRepository imagenRepo;
+    private final NodoService nodoService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${gemini.api.key}")
@@ -54,12 +57,35 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
         return new AnalisisDTO(a.getIdAnalisis(), a.getLectura().getIdLectura(), a.getResultadoTexto(), a.getPromptUtilizado(), a.getTiempoResMs(), a.getFechaHora());
     }
 
+    private void validarPropiedadDelNodo(NodoEsp32 nodo) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (!(principal instanceof UserDetailsImpl userDetails)) {
+            throw new AccessDeniedException("No se pudo validar la identidad del usuario.");
+        }
+
+        String rolActual = userDetails.getUsuario().getRol().name();
+        if (rolActual.equals(RolUsuario.ADMINISTRADOR.name()) || rolActual.equals(RolUsuario.SOPORTE.name()) || rolActual.equals(RolUsuario.GESTIONADOR.name())) {
+            return;
+        }
+
+        Integer idUsuarioAutenticado = userDetails.getUsuario().getIdUsuario();
+        Integer idDueñoDelNodo = nodo.getCliente().getIdUsuario();
+
+        if (!idDueñoDelNodo.equals(idUsuarioAutenticado)) {
+            log.warn("BLOQUEO MULTITENENCIA: Usuario {} intentó acceder a datos de IA del Nodo {}",
+                    idUsuarioAutenticado, nodo.getIdNodo());
+            throw new AccessDeniedException("Acceso denegado: Este diagnóstico no pertenece a su hardware.");
+        }
+    }
+
     @Override
     @Transactional
     public AnalisisDTO generarAnalisisReal(Integer idLectura) {
         log.info("Solicitando análisis de IA para la lectura ID: {}", idLectura);
 
         LecturaSensor lectura = lecturaService.getEntidadPorId(idLectura);
+        validarPropiedadDelNodo(lectura.getNodo());
         Optional<ImagenAgua> imagenOpt = imagenRepo.findByLectura_IdLectura(idLectura);
         String base64Image = "";
 
@@ -139,6 +165,10 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
 
     @Override
     public PageResponse<AnalisisDTO> obtenerAnalisisPaginados(Integer idNodo, LocalDateTime inicio, LocalDateTime fin, int page, int size) {
+
+        NodoEsp32 nodo = nodoService.getEntidadPorId(idNodo);
+        validarPropiedadDelNodo(nodo);
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("fechaHora").descending());
         Page<AnalisisIa> pagina = analisisRepo.findByLectura_Nodo_IdNodoAndFechaHoraBetween(idNodo, inicio, fin, pageable);
 
@@ -151,6 +181,10 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
 
     @Override
     public AnalisisDTO obtenerPorLectura(Integer idLectura) {
+
+        LecturaSensor lectura = lecturaService.getEntidadPorId(idLectura);
+        validarPropiedadDelNodo(lectura.getNodo());
+
         return analisisRepo.findByLectura_IdLectura(idLectura)
                 .map(this::mapToDTO)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró análisis de IA para lectura: " + idLectura));
