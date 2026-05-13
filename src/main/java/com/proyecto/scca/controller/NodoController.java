@@ -17,7 +17,6 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/nodos")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class NodoController {
 

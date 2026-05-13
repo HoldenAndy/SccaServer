@@ -15,7 +15,6 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/imagenes")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class ImagenController {
 

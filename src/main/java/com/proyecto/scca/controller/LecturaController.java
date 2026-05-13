@@ -18,7 +18,6 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/lecturas")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class LecturaController {
 
