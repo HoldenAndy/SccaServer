@@ -7,9 +7,9 @@ import com.proyecto.scca.repository.UsuarioRepository;
 import com.proyecto.scca.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Slf4j
@@ -18,6 +18,7 @@ import java.util.List;
 public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder; // Inyectado
 
     private UsuarioDTO mapToDTO(Usuario u) {
         return new UsuarioDTO(u.getIdUsuario(), u.getNombre(), u.getEmail(), u.getRol());
@@ -31,17 +32,19 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Override
     @Transactional
     public UsuarioDTO crearUsuario(UsuarioRequest req) {
-        log.info("Creando nuevo usuario: {}", req.email());
+        log.info("Creando nuevo usuario por Admin: {}", req.email());
         usuarioRepository.findByEmail(req.email()).ifPresent(u -> {
-            log.error("Fallo al crear usuario: el email {} ya existe.", req.email());
             throw new IllegalArgumentException("El email ya está registrado.");
         });
 
         Usuario usuario = Usuario.builder()
                 .nombre(req.nombre())
                 .email(req.email())
+                .password(passwordEncoder.encode(req.password()))
                 .rol(req.rol())
+                .debeCambiarPassword(true) // Forzar cambio
                 .build();
+
         return mapToDTO(usuarioRepository.save(usuario));
     }
 
