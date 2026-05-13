@@ -3,6 +3,7 @@ package com.proyecto.scca.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -31,7 +32,34 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
-    @Bean
+   
+   @Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .authorizeHttpRequests(auth -> auth
+
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                    .requestMatchers("/api/v1/auth/**").permitAll()
+
+                    .requestMatchers(
+                            "/api/v1/lecturas/hw/**",
+                            "/api/v1/imagenes/hw/**"
+                    ).permitAll()
+
+                    .anyRequest().authenticated()
+            )
+            .sessionManagement(session ->
+                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+}
+    /*/ @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -45,7 +73,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
+    }/*/
 
     // *@Bean
     // public CorsConfigurationSource corsConfigurationSource() {
@@ -63,34 +91,34 @@ public class SecurityConfig {
     // return source;
     // }
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
 
-        CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(List.of(
+            "https://scca.site",
+            "https://www.scca.site",
+            "http://localhost:5173"
+    ));
 
-        config.setAllowedOrigins(List.of(
-                "https://scca.site",
-                "https://www.scca.site",
-                "http://scca.site",
-                "http://www.scca.site",
-                "http://localhost:5173"));
+    config.setAllowedMethods(List.of(
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+    ));
 
-        config.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
 
-        config.setAllowedHeaders(List.of("*"));
+    config.setAllowCredentials(true);
 
-        config.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
 
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
-    }
+    return source;
+}
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
