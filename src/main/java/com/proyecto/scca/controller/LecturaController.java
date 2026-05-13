@@ -7,6 +7,7 @@ import com.proyecto.scca.service.LecturaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,24 @@ import java.util.List;
 public class LecturaController {
 
     private final LecturaService lecturaService;
+
+    @Value("${scca.hardware.api-key}")
+    private String hardwareApiKeySecreta;
+
+    @PostMapping("/hw/registrar")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LecturaDTO registrarLecturaHardware(
+            @RequestHeader("X-Hardware-Api-Key") String apiKeyRecibida,
+            @Valid @RequestBody LecturaRequest request) {
+
+        if (!hardwareApiKeySecreta.equals(apiKeyRecibida)) {
+            log.warn("Intento de acceso denegado al hardware. Clave incorrecta.");
+            throw new RuntimeException("Acceso denegado: API Key inválida");
+        }
+
+        log.info("Hardware ESP32 validado. Registrando lectura para el nodo {}", request.idNodo());
+        return lecturaService.registrarLectura(request);
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

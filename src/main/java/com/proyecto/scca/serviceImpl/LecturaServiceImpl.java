@@ -4,8 +4,10 @@ import com.proyecto.scca.exception.ResourceNotFoundException;
 import com.proyecto.scca.model.dto.*;
 import com.proyecto.scca.model.entity.LecturaSensor;
 import com.proyecto.scca.model.entity.NodoEsp32;
+import com.proyecto.scca.model.entity.RolUsuario;
 import com.proyecto.scca.repository.LecturaRepository;
 import com.proyecto.scca.repository.NodoRepository;
+import com.proyecto.scca.security.UserDetailsImpl;
 import com.proyecto.scca.service.LecturaService;
 import com.proyecto.scca.service.NodoService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,15 +59,32 @@ public class LecturaServiceImpl implements LecturaService {
         return mapToDTO(lecturaRepository.save(lectura));
     }
 
+    private void validarPropiedadDelNodo(NodoEsp32 nodo) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        String rol = userDetails.getUsuario().getRol().name();
+        if (rol.equals(RolUsuario.ADMINISTRADOR.name()) || rol.equals(RolUsuario.SOPORTE.name())) {
+            return;
+        }
+
+        Integer idUsuarioAutenticado = userDetails.getUsuario().getIdUsuario();
+        if (!nodo.getCliente().getIdUsuario().equals(idUsuarioAutenticado)) {
+            log.warn("Intento de acceso no autorizado. Usuario {} intentó ver el Nodo {}", idUsuarioAutenticado, nodo.getIdNodo());
+            throw new AccessDeniedException("No tienes permiso para ver los datos de este hardware.");
+        }
+    }
+
     public LecturaDTO obtenerUltimaLectura(Integer idNodo) {
-        nodoService.getEntidadPorId(idNodo); // Validar nodo
+        NodoEsp32 nodo = nodoService.getEntidadPorId(idNodo);
+        validarPropiedadDelNodo(nodo);
         return lecturaRepository.findTop1ByNodo_IdNodoOrderByFechaHoraDesc(idNodo)
                 .map(this::mapToDTO)
                 .orElseThrow(() -> new ResourceNotFoundException("No hay lecturas registradas para el nodo: " + idNodo));
     }
 
     public List<LecturaDTO> obtenerHistorialNodo(Integer idNodo) {
-        nodoService.getEntidadPorId(idNodo);
+        NodoEsp32 nodo = nodoService.getEntidadPorId(idNodo);
+        validarPropiedadDelNodo(nodo);
         log.debug("Consultando historial completo (Top 100) para el nodo: {}", idNodo);
         return lecturaRepository.findTop100ByNodo_IdNodoOrderByFechaHoraDesc(idNodo)
                 .stream().map(this::mapToDTO).toList();
@@ -72,7 +93,8 @@ public class LecturaServiceImpl implements LecturaService {
     public PageResponse<LecturaDTO> obtenerHistorialPaginado(
             Integer idNodo, LocalDateTime inicio, LocalDateTime fin, int page, int size, String sortBy, String sortDir) {
 
-        nodoService.getEntidadPorId(idNodo);
+        NodoEsp32 nodo = nodoService.getEntidadPorId(idNodo);
+        validarPropiedadDelNodo(nodo);
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -87,7 +109,9 @@ public class LecturaServiceImpl implements LecturaService {
     }
 
     public List<LecturaDTO> obtenerDatosParaGraficos(Integer idNodo, LocalDateTime inicio, LocalDateTime fin) {
-        nodoService.getEntidadPorId(idNodo);
+        NodoEsp32 nodo = nodoService.getEntidadPorId(idNodo);
+        validarPropiedadDelNodo(nodo);
+
         return lecturaRepository.findByNodo_IdNodoAndFechaHoraBetweenOrderByFechaHoraAsc(idNodo, inicio, fin)
                 .stream().map(this::mapToDTO).toList();
     }
