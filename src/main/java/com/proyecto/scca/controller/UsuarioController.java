@@ -13,7 +13,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+@PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class UsuarioController {
