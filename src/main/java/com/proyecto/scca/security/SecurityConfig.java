@@ -39,8 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/lecturas/hw/**", "/api/v1/imagenes/hw/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -48,17 +47,48 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // *@Bean
+    // public CorsConfigurationSource corsConfigurationSource() {
+    // CorsConfiguration config = new CorsConfiguration();
+
+    // config.setAllowedOrigins(List.of("http://localhost:5173"));
+    // config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    // config.setAllowedHeaders(List.of("Authorization", "Content-Type",
+    // "X-Hardware-Api-Key"));
+    // config.setAllowCredentials(true);
+
+    // UrlBasedCorsConfigurationSource source = new
+    // UrlBasedCorsConfigurationSource();
+    // source.registerCorsConfiguration("/**", config);
+    // return source;
+    // }
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Hardware-Api-Key"));
+        config.setAllowedOrigins(List.of(
+                "https://scca.site",
+                "https://www.scca.site",
+                "http://scca.site",
+                "http://www.scca.site",
+                "http://localhost:5173"));
+
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"));
+
+        config.setAllowedHeaders(List.of("*"));
+
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 
