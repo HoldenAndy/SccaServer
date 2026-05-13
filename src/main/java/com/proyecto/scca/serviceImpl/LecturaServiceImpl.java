@@ -63,7 +63,9 @@ public class LecturaServiceImpl implements LecturaService {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         String rol = userDetails.getUsuario().getRol().name();
-        if (rol.equals(RolUsuario.ADMINISTRADOR.name()) || rol.equals(RolUsuario.SOPORTE.name())) {
+        if (rol.equals(RolUsuario.ADMINISTRADOR.name())
+                || rol.equals(RolUsuario.SOPORTE.name())
+                || rol.equals(RolUsuario.GESTIONADOR.name())) {
             return;
         }
 
