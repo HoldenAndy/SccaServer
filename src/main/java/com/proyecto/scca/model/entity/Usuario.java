@@ -30,6 +30,9 @@ public class Usuario {
     @Column(name = "fecha_creacion", updatable = false, nullable = false)
     private LocalDateTime fechaCreacion;
 
+    @Column(nullable = false)
+    private Boolean activo = true;
+
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();

@@ -16,4 +16,6 @@ public class NodoEsp32 {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario cliente;
+    @Column(nullable = false)
+    private Boolean activo = true;
 }

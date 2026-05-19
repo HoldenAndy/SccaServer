@@ -1,6 +1,6 @@
 package com.proyecto.scca.repository;
 
-import com.proyecto.scca.model.entity.*;
+import com.proyecto.scca.model.entity.AnalisisIa;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
