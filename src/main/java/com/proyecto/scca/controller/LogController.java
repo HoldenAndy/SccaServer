@@ -2,12 +2,16 @@ package com.proyecto.scca.controller;
 
 import com.proyecto.scca.model.dto.LogDTO;
 import com.proyecto.scca.model.dto.LogRequest;
+import com.proyecto.scca.model.dto.PageResponse;
 import com.proyecto.scca.service.LogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -24,5 +28,17 @@ public class LogController {
     @ResponseStatus(HttpStatus.CREATED)
     public LogDTO registrarLog(@Valid @RequestBody LogRequest request) {
         return logService.registrarLog(request);
+    }
+
+    @GetMapping("/buscar")
+    public PageResponse<LogDTO> buscarLogs(
+            @RequestParam(required = false) String nivel,
+            @RequestParam(required = false) String modulo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime inicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fin,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        return logService.buscarLogsPaginados(nivel, modulo, inicio, fin, page, size);
     }
 }

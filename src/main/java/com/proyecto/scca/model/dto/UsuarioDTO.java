@@ -6,5 +6,6 @@ public record UsuarioDTO(
         Integer idUsuario,
         String nombre,
         String email,
-        RolUsuario rol
+        RolUsuario rol,
+        Boolean activo
 ) {}

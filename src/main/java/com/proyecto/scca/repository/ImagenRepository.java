@@ -1,6 +1,6 @@
 package com.proyecto.scca.repository;
 
-import com.proyecto.scca.model.entity.*;
+import com.proyecto.scca.model.entity.ImagenAgua;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

@@ -104,6 +104,7 @@ public CorsConfigurationSource corsConfigurationSource() {
             "GET",
             "POST",
             "PUT",
+            "PATCH",
             "DELETE",
             "OPTIONS"
     ));

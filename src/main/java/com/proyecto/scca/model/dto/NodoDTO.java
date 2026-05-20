@@ -7,5 +7,6 @@ public record NodoDTO(
         String macAddress,
         String ubicacion,
         Boolean estadoConexion,
-        LocalDateTime ultimaLectura
+        LocalDateTime ultimaLectura,
+        Boolean activo
 ) {}
