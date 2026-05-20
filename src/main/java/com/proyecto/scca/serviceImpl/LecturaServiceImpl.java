@@ -53,6 +53,7 @@ public class LecturaServiceImpl implements LecturaService {
                 .build();
 
         nodo.setUltimaLectura(lectura.getFechaHora());
+        nodo.setEstadoConexion(true);
         nodoRepository.save(nodo);
 
         log.debug("Datos guardados: pH={}, Temp={}°C", req.ph(), req.temperatura());
