@@ -10,6 +10,7 @@ import com.proyecto.scca.repository.NodoRepository;
 import com.proyecto.scca.security.UserDetailsImpl;
 import com.proyecto.scca.service.LecturaService;
 import com.proyecto.scca.service.NodoService;
+import com.proyecto.scca.sse.SseHub;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +35,7 @@ public class LecturaServiceImpl implements LecturaService {
     private final LecturaRepository lecturaRepository;
     private final NodoService nodoService;
     private final NodoRepository nodoRepository;
+    private final SseHub sseHub;
 
     private LecturaDTO mapToDTO(LecturaSensor l) {
         return new LecturaDTO(l.getIdLectura(), l.getNodo().getIdNodo(), l.getPh(), l.getTemperatura(), l.getTurbidez(), l.getTds(), l.getFechaHora());
@@ -57,7 +61,18 @@ public class LecturaServiceImpl implements LecturaService {
         nodoRepository.save(nodo);
 
         log.debug("Datos guardados: pH={}, Temp={}°C", req.ph(), req.temperatura());
-        return mapToDTO(lecturaRepository.save(lectura));
+        LecturaDTO dto = mapToDTO(lecturaRepository.save(lectura));
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        sseHub.publicarLectura(dto);
+                    }
+                }
+        );
+
+        return dto;
     }
 
     private void validarPropiedadDelNodo(NodoEsp32 nodo) {

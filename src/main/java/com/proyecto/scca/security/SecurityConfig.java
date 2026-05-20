@@ -31,6 +31,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsServiceImpl userDetailsService;
+    private final com.proyecto.scca.sse.SseAuthFilter sseAuthFilter;
 
    
    @Bean
@@ -55,6 +56,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider())
+            .addFilterBefore(sseAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
