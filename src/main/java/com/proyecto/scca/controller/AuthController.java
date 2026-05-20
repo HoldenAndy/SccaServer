@@ -46,7 +46,7 @@ public class AuthController {
     @PostMapping("/cambiar-password")
     public ResponseEntity<String> cambiarPassword(
             @Valid @RequestBody CambiarPasswordRequest request,
-            Authentication authentication // Spring inyecta al usuario logueado gracias al JWT
+            Authentication authentication
     ) {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         Usuario usuario = usuarioRepository.findByEmail(userDetails.getUsername())

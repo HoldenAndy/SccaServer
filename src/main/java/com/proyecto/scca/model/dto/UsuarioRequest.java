@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 public record UsuarioRequest(
         @NotBlank String nombre,
         @Email @NotBlank String email,
-        @NotBlank String password, // Contraseña temporal asignada por el Admin
+        @NotBlank String password,
         @NotNull RolUsuario rol,
         LocalDateTime fechaCreacion
 ) {}
