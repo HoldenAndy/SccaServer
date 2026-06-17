@@ -16,7 +16,12 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -68,6 +73,43 @@ public class ImagenServiceImpl implements ImagenService {
                 .build();
 
         return mapToDTO(imagenRepository.save(imagen));
+    }
+
+    @Override
+    @Transactional
+    public ImagenDTO registrarImagenHardware(Integer idLectura, MultipartFile archivo) {
+        log.info("Procesando archivo binario para la lectura ID: {}", idLectura);
+        LecturaSensor lectura = lecturaService.getEntidadPorId(idLectura);
+
+        if (archivo.isEmpty()) {
+            throw new RuntimeException("El archivo de imagen está vacío");
+        }
+
+        try {
+            String nombreArchivo = "lectura_" + idLectura + "_" + System.currentTimeMillis() + ".jpg";
+            Path directorioDestino = Paths.get("uploads/imagenes").toAbsolutePath().normalize();
+            Files.createDirectories(directorioDestino);
+
+            Path rutaArchivoFisico = directorioDestino.resolve(nombreArchivo);
+
+            archivo.transferTo(rutaArchivoFisico.toFile());
+
+            double pesoKb = archivo.getSize() / 1024.0;
+            double pesoRedondeado = Math.round(pesoKb * 100.0) / 100.0;
+
+            ImagenAgua imagen = ImagenAgua.builder()
+                    .lectura(lectura)
+                    .rutaArchivo("/uploads/imagenes/" + nombreArchivo)
+                    .pesoKb(pesoRedondeado)
+                    .fechaHora(LocalDateTime.now())
+                    .build();
+
+            return mapToDTO(imagenRepository.save(imagen));
+
+        } catch (IOException e) {
+            log.error("Fallo grave al guardar la imagen física en el servidor", e);
+            throw new RuntimeException("Error al almacenar el archivo de imagen");
+        }
     }
 
     @Override

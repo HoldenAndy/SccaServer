@@ -50,6 +50,8 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                             "/api/v1/imagenes/hw/**"
                     ).permitAll()
 
+                    .requestMatchers("/api/v1/imagenes/hw/registrar").permitAll()
+
                     .anyRequest().authenticated()
             )
             .sessionManagement(session ->
