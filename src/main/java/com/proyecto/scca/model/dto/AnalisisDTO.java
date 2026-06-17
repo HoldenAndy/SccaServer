@@ -8,5 +8,6 @@ public record AnalisisDTO(
         String resultadoTexto,
         String promptUtilizado,
         Integer tiempoResMs,
-        LocalDateTime fechaHora
+        LocalDateTime fechaHora,
+        Boolean generadoPorIa
 ) {}
