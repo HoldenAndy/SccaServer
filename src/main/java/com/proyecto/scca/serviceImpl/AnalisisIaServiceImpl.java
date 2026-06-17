@@ -54,7 +54,8 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
     private String geminiApiUrl;
 
     private AnalisisDTO mapToDTO(AnalisisIa a) {
-        return new AnalisisDTO(a.getIdAnalisis(), a.getLectura().getIdLectura(), a.getResultadoTexto(), a.getPromptUtilizado(), a.getTiempoResMs(), a.getFechaHora());
+        boolean esDeIA = !("CONTINGENCIA_SISTEMA_LOCAL".equals(a.getPromptUtilizado()));
+        return new AnalisisDTO(a.getIdAnalisis(), a.getLectura().getIdLectura(), a.getResultadoTexto(), a.getPromptUtilizado(), a.getTiempoResMs(), a.getFechaHora(), esDeIA);
     }
 
     private void validarPropiedadDelNodo(NodoEsp32 nodo) {
@@ -84,24 +85,20 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
     public AnalisisDTO generarAnalisisReal(Integer idLectura) {
         log.info("Solicitando análisis de IA para la lectura ID: {}", idLectura);
 
+        Optional<AnalisisIa> analisisExistente = analisisRepo.findByLectura_IdLectura(idLectura);
+        if (analisisExistente.isPresent()) {
+            log.info("El análisis ya existe, retornando datos cacheados.");
+            return mapToDTO(analisisExistente.get());
+        }
+
         LecturaSensor lectura = lecturaService.getEntidadPorId(idLectura);
         validarPropiedadDelNodo(lectura.getNodo());
         Optional<ImagenAgua> imagenOpt = imagenRepo.findByLectura_IdLectura(idLectura);
         String base64Image = "";
 
-        if (imagenOpt.isPresent()) {
-            try {
-                Path path = Paths.get(imagenOpt.get().getRutaArchivo());
-                byte[] imageBytes = Files.readAllBytes(path);
-                base64Image = Base64.getEncoder().encodeToString(imageBytes);
-            } catch (IOException e) {
-                log.error("Error crítico al leer la imagen física en: {}", imagenOpt.get().getRutaArchivo(), e);
-                throw new RuntimeException("No se pudo acceder al archivo de imagen para el análisis de visión.");
-            }
-        } else {
-            log.warn("Análisis abortado: La lectura {} no tiene una imagen asociada en BD.", idLectura);
-            throw new IllegalArgumentException("Se requiere una imagen para procesar el análisis con Gemini Vision.");
-        }
+        String promptFinalParaGuardar;
+        String resultadoFinal;
+        long startTime = System.currentTimeMillis();
 
         String prompt = String.format(
                 "Eres un asistente amigable y preventivo que ayuda a familias en su hogar a entender si el agua de su tanque está en buenas condiciones. " +
@@ -115,46 +112,91 @@ public class AnalisisIaServiceImpl implements AnalisisIaService {
                 lectura.getPh(), lectura.getTemperatura(), lectura.getTurbidez(), lectura.getTds()
         );
 
-        Map<String, Object> requestBody = Map.of(
-                "contents", List.of(
-                        Map.of("parts", List.of(
-                                Map.of("text", prompt),
-                                Map.of("inline_data", Map.of("mime_type", "image/jpeg", "data", base64Image))
-                        ))
-                )
-        );
+        promptFinalParaGuardar = prompt;
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        long startTime = System.currentTimeMillis();
-        Map<String, Object> response;
         try {
-            response = restTemplate.postForObject(geminiApiUrl + "?key=" + geminiApiKey, requestEntity, Map.class);
-        } catch (org.springframework.web.client.HttpStatusCodeException e) {
-            log.error("Google Gemini rechazó la petición con código HTTP {}. Detalle exacto: {}",
-                    e.getStatusCode(), e.getResponseBodyAsString());
-            throw new RuntimeException("Error en la API de Gemini: " + e.getStatusCode());
+            if (imagenOpt.isPresent()) {
+                String rutaWeb = imagenOpt.get().getRutaArchivo();
+                String rutaFisica = rutaWeb.startsWith("/") ? rutaWeb.substring(1) : rutaWeb;
+
+                Path path = Paths.get(rutaFisica).toAbsolutePath().normalize();
+                byte[] imageBytes = Files.readAllBytes(path);
+                base64Image = Base64.getEncoder().encodeToString(imageBytes);
+            } else {
+                throw new IllegalArgumentException("Se requiere una imagen para procesar el análisis con Gemini Vision.");
+            }
+
+            Map<String, Object> requestBody = Map.of(
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", prompt),
+                                    Map.of("inline_data", Map.of("mime_type", "image/jpeg", "data", base64Image))
+                            ))
+                    )
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+            Map<String, Object> response = restTemplate.postForObject(geminiApiUrl + "?key=" + geminiApiKey, requestEntity, Map.class);
+            resultadoFinal = extraerTextoDeRespuesta(response);
+
         } catch (Exception e) {
-            log.error("Fallo de red al intentar contactar a Google Gemini: {}", e.getMessage(), e);
-            throw new RuntimeException("Error de red al contactar a Gemini Vision.");
+            log.error("Fallo crítico en el proceso de IA o lectura de imagen física: {}. Activando contingencia de hardware.", e.getMessage());
+            resultadoFinal = evaluarCalidadAguaLocal(lectura);
+            promptFinalParaGuardar = "CONTINGENCIA_SISTEMA_LOCAL";
         }
 
         long endTime = System.currentTimeMillis();
         int tiempoResMs = (int) (endTime - startTime);
 
-        String resultadoIA = extraerTextoDeRespuesta(response);
-
         AnalisisIa analisis = AnalisisIa.builder()
                 .lectura(lectura)
-                .resultadoTexto(resultadoIA)
-                .promptUtilizado(prompt)
+                .resultadoTexto(resultadoFinal)
+                .promptUtilizado(promptFinalParaGuardar)
                 .tiempoResMs(tiempoResMs)
                 .fechaHora(LocalDateTime.now())
                 .build();
 
         return mapToDTO(analisisRepo.save(analisis));
+    }
+
+    private String evaluarCalidadAguaLocal(LecturaSensor lectura) {
+        StringBuilder reporte = new StringBuilder();
+        reporte.append("[SISTEMA EN MODO CONTINGENCIA] La Inteligencia Artificial no está disponible. Resultado basado en heurística de sensores:\n\n");
+
+        boolean esApta = true;
+
+        if (lectura.getPh() >= 6.5 && lectura.getPh() <= 8.5) {
+            reporte.append("pH: Dentro del rango normativo (").append(lectura.getPh()).append(").\n");
+        } else {
+            reporte.append("pH: Anómalo (").append(lectura.getPh()).append("). Peligro de corrosión o toxicidad.\n");
+            esApta = false;
+        }
+
+        if (lectura.getTurbidez() < 5.0) {
+            reporte.append("Turbidez: Aceptable (").append(lectura.getTurbidez()).append(" NTU).\n");
+        } else {
+            reporte.append("Turbidez: Alta (").append(lectura.getTurbidez()).append(" NTU). Exceso de partículas suspendidas.\n");
+            esApta = false;
+        }
+
+        if (lectura.getTds() < 500) {
+            reporte.append("TDS: Sólidos en nivel seguro (").append(lectura.getTds()).append(" ppm).\n");
+        } else {
+            reporte.append("TDS: Crítico (").append(lectura.getTds()).append(" ppm). Posible concentración de metales o sales.\n");
+            esApta = false;
+        }
+
+        reporte.append("\nDiagnóstico del sistema: ");
+        if (esApta) {
+            reporte.append("Los sensores indican que el agua cuenta con parámetros físicos estables.");
+        } else {
+            reporte.append("El agua presenta lecturas fuera de la norma. NO utilizar hasta restablecer niveles químicos.");
+        }
+
+        return reporte.toString();
     }
 
     @Override
