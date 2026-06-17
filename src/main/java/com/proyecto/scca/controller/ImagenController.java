@@ -25,7 +25,24 @@ public class ImagenController {
     @Value("${scca.hardware.api-key}")
     private String hardwareApiKeySecreta;
 
-    @PostMapping(value = "/hw/registrar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+
+    @PostMapping(value = "/hw/registrar") 
+    @ResponseStatus(HttpStatus.CREATED)
+    public ImagenDTO registrarImagenHardware(
+            @RequestHeader("X-Hardware-Api-Key") String apiKeyRecibida,
+            @RequestParam("idLectura") Integer idLectura,
+            @RequestPart("archivo") MultipartFile archivo) { // 2. CAMBIA @RequestParam por @RequestPart
+
+        if (!hardwareApiKeySecreta.equals(apiKeyRecibida)) {
+            throw new RuntimeException("Acceso denegado: API Key de hardware inválida");
+        }
+
+        log.info("API REST: Solicitud multipart validada para registrar imagen de la lectura {}", idLectura);
+
+        return imagenService.registrarImagenHardware(idLectura, archivo);
+    }
+    
+    /*@PostMapping(value = "/hw/registrar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ImagenDTO registrarImagenHardware(
             @RequestHeader("X-Hardware-Api-Key") String apiKeyRecibida,
@@ -39,7 +56,7 @@ public class ImagenController {
         log.info("API REST: Solicitud multipart validada para registrar imagen de la lectura {}", idLectura);
 
         return imagenService.registrarImagenHardware(idLectura, archivo);
-    }
+    }*/
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
