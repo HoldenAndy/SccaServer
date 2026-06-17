@@ -87,7 +87,7 @@ public class ImagenServiceImpl implements ImagenService {
 
         try {
             String nombreArchivo = "lectura_" + idLectura + "_" + System.currentTimeMillis() + ".jpg";
-            Path directorioDestino = Paths.get("uploads/imagenes").toAbsolutePath().normalize();
+            Path directorioDestino = Paths.get("/uploads/imagenes").toAbsolutePath().normalize();
             Files.createDirectories(directorioDestino);
 
             Path rutaArchivoFisico = directorioDestino.resolve(nombreArchivo);
